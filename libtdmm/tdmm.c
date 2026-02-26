@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct {
+typedef struct Block {
 	//metadata is the size of the struct itself which is 25(1ptr and 2size_t and 1bool0 + 7(from padding)
 	size_t size;
 	//what got pulled for direct user needs
@@ -17,14 +17,14 @@ typedef struct {
 
 
 
-alloc_strat_e cur = NULL;
+alloc_strat_e cur;
 Block* start = NULL;
 
 void t_init(alloc_strat_e strat) {
 	cur = strat;
 	if(start == NULL) {
 		//+32 for meta data and then +32 done to pointer to return actual start
-		start = (Block*)mmap(NULL, 1000000+32, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+		start = (Block*)mmap(NULL, 1000000+32, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		start->free = true;
 		start->size = 1000000+32;
 		start->usable = 1000000;
@@ -32,15 +32,16 @@ void t_init(alloc_strat_e strat) {
 	}
 	//if init already called then make all blocks free
 	else {
-		while(start != NULL) {
-			start->free = true;
-			start = start->next;
+		Block* iter = start;
+		while(iter != NULL) {
+			iter->free = true;
+			iter = iter->next;
 		}
 	}
 }
 
 //helper for once node found to load in memory on, it handles loading in memeory and creating next block with leftover or case where more memory needed
-void loadIn(size_t size, Block* start) {
+void* loadIn(size_t size, Block* start) {
 	//found space
 		if(start->usable >= size && start->free) {
 			//fill current node and make new node right after with leftover space~
@@ -64,12 +65,13 @@ void loadIn(size_t size, Block* start) {
 			else {
 				start->free = false;
 			}	
+			return start;
 		}
 		//no space found and at end
 		else {
 			//amount to ask mmap for rounded up to the nearest page including meta data
-			uint64_t pages = (int)ciel(((float)size+32)/((float)4096));
-			Block* new = (Block*)mmap(NULL, pages*4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+			uint64_t pages = (int)ceil(((float)size+32)/((float)4096));
+			Block* new = (Block*)mmap(NULL, pages*4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 			new->free = false;
 			new->size = pages*4096;
 			new->usable = new->size-32;
@@ -91,6 +93,7 @@ void loadIn(size_t size, Block* start) {
 				//connect extra into the sequence
 				new->next = extra;
 			}
+			return new;
 		}
 }
 
@@ -98,15 +101,17 @@ void loadIn(size_t size, Block* start) {
 //there is currently an error as the Block* don't have a memery
 //you will simulate the memory as the actual pointers themselves will be at those memory starts
 void *t_malloc(size_t size) {
-	if(cur == NULL || start == NULL) {
+	if((cur != FIRST_FIT && cur != BEST_FIT && cur != WORST_FIT) || start == NULL) {
 		fprintf(stderr, "malloc without starting process");
 	}
+
 	if(cur == FIRST_FIT) {
-		while(start->usable <= size || !start->free) {
-			if(start->next == NULL) break;
-			start = start->next;
+		Block* iter = start;
+		while(iter->usable < size || !iter->free) {
+			if(iter->next == NULL) break;
+			iter = iter->next;
 		}
-		loadIn(size, start);
+		return loadIn(size, iter);
 		// //found space
 		// if(start->usable >= size && start->free) {
 		// 	//fill current node and make new node right after with leftover space~
@@ -166,40 +171,43 @@ void *t_malloc(size_t size) {
 		//set to max value uint_64t can hold
 		uint64_t differential = (1ULL << 63)-1;
 		uint64_t curDiff;
-		while(start->next != NULL) {
-			if(start->free && start->usable >= size) {
-				curDiff = start->usable-size;
+		Block* iter = start;
+		while(iter->next != NULL) {
+			if(iter->free && iter->usable >= size) {
+				curDiff = iter->usable-size;
 				if(curDiff < differential) {
 					differential = curDiff;
-					ptr = start;
+					ptr = iter;
 				}
 			}
-			start = start->next;
+			iter = iter->next;
 		}
-		//no match found so have to set to end
-		if(ptr == NULL) {
-			ptr = start->next;
-		}
-		loadIn(size, ptr);
+		// //no match found so have to set to end
+		// if(ptr == NULL) {
+		// 	ptr = iter->next;
+		// }
+		return loadIn(size, ptr);
 	}
 	else if(cur == WORST_FIT) {
 		Block* ptr = NULL;
 		int64_t differential = -1;
 		int64_t curDiff;
-		while(start->next != NULL) {
-			if(start->next && start->usable >= size) {
-				curDiff = start->usable-size;
+		Block* iter = start;
+		while(iter->next != NULL) {
+			if(iter->free && iter->usable >= size) {
+				curDiff = iter->usable-size;
 				if(curDiff > differential) {
 					differential = curDiff;
-					ptr = start;
+					ptr = iter;
 				}
 			}
+			iter = iter->next;
 		}
 		//no match found so have to set to end
 		if(ptr == NULL) {
-			ptr = start->next;
+			ptr = iter->next;
 		}
-		loadIn(size, ptr);
+		return loadIn(size, ptr);
 	}
 	else {
 		fprintf(stderr, "illegal enum val");
@@ -207,11 +215,12 @@ void *t_malloc(size_t size) {
 }
 
 void t_free(void *ptr) {
-  	while(start!=ptr) {
-		start = start->next;
-		if(start == NULL) {
+	Block* iter = start;
+  	while(iter!=ptr) {
+		iter = iter->next;
+		if(iter == NULL) {
 			fprintf(stderr, "tried free nonexisting pointer");
 		}
 	}
-	start->free = true;
+	iter->free = true;
 }
