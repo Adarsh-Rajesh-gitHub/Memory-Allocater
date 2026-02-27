@@ -224,6 +224,18 @@ void t_free(void *ptr) {
 		}
 	}
 	iter->free = true;
+	//coalese
+	Block* coalesce = start;
+	while(coalesce->next != NULL) {
+		if(coalesce->free && coalesce->next->free) {
+			Block* attach = coalesce->next->next;
+			coalesce->size += coalesce->next->size;
+			coalesce->usable = coalesce->size-sizeof(Block);
+			coalesce->next = attach;
+		}
+		if(coalesce->next != NULL) coalesce = coalesce->next;
+		else break;
+	}
 }
 
 void printBlocks() {
