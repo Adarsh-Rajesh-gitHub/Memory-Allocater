@@ -24,9 +24,9 @@ void t_init(alloc_strat_e strat) {
 	cur = strat;
 	if(start == NULL) {
 		//+32 for meta data and then +32 done to pointer to return actual start
-		start = (Block*)mmap(NULL, 1000000+32, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		start = (Block*)mmap(NULL, 1000000+sizeof(Block), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		start->free = true;
-		start->size = 1000000+32;
+		start->size = 1000000+sizeof(Block);
 		start->usable = 1000000;
 		start->next = NULL;
 	}
@@ -45,18 +45,18 @@ void* loadIn(size_t size, Block* start) {
 	//found space
 		if(start->usable >= size && start->free) {
 			//fill current node and make new node right after with leftover space~
-			if(start->usable-size > 32) {
+			if(start->usable-size > sizeof(Block)) {
 				//leftover space is start->size-size
-				//take leftover space out
-				start->usable -= start->size-size;
-				start->size -= start->size-size;
-				start->free = false;
 				//create new block after w. new ptr which is prev block ptr + leftover
-				Block* new = start+start->size-size;
+				Block* new = (Block*)(((char*)start) + sizeof(Block) + size);
 				new->free = true;
-				new->size = start->size-size;
-				new->usable = new->size-32;
+				new->size = start->size-size-sizeof(Block);
+				new->usable = new->size-sizeof(Block);
 				new->next = NULL;
+				//take leftover space out
+				start->usable = size;
+				start->size = size+sizeof(Block);
+				start->free = false;
 				//connect new into the sequence
 				Block* temp = start->next;
 				start->next = new;
@@ -65,35 +65,35 @@ void* loadIn(size_t size, Block* start) {
 			else {
 				start->free = false;
 			}	
-			return start;
+			return ((char*)start) + sizeof(Block);
 		}
 		//no space found and at end
 		else {
 			//amount to ask mmap for rounded up to the nearest page including meta data
-			uint64_t pages = (int)ceil(((float)size+32)/((float)4096));
+			uint64_t pages = (int)ceil(((float)size+sizeof(Block))/((float)4096));
 			Block* new = (Block*)mmap(NULL, pages*4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 			new->free = false;
 			new->size = pages*4096;
-			new->usable = new->size-32;
+			new->usable = new->size-sizeof(Block);
 			new->next = NULL;
 			start->next = new;
 			//fill current node and make new node right after with leftover space~
-			if(new->usable-size > 32) {
+			if(new->usable-size > sizeof(Block)) {
 				//leftover space is start->size-size
 				//take leftover space out
 				new->usable -= new->size-size;
 				new->size -= new->size-size;
 				new->free = false;
 				//create new block after w. new ptr which is prev block ptr + leftover
-				Block* extra = new+new->size-size;
+				Block* extra = (Block*)(((char*)new) + sizeof(Block) + size);
 				extra->free = true;
 				extra->size = new->size-size;
-				extra->usable = extra->size-32;
+				extra->usable = extra->size-sizeof(Block);
 				extra->next = NULL;
 				//connect extra into the sequence
 				new->next = extra;
 			}
-			return new;
+			return ((char*)new) + sizeof(Block);
 		}
 }
 
@@ -115,7 +115,7 @@ void *t_malloc(size_t size) {
 		// //found space
 		// if(start->usable >= size && start->free) {
 		// 	//fill current node and make new node right after with leftover space~
-		// 	if(start->usable-size > 32) {
+		// 	if(start->usable-size > sizeof(Block)) {
 		// 		//leftover space is start->size-size
 		// 		//take leftover space out
 		// 		start->usable -= start->size-size;
@@ -125,7 +125,7 @@ void *t_malloc(size_t size) {
 		// 		Block* new = start+start->size-size;
 		// 		new->free = true;
 		// 		new->size = start->size-size;
-		// 		new->usable = new->size-32;
+		// 		new->usable = new->size-sizeof(Block);
 		// 		new->next = NULL;
 		// 		//connect new into the sequence
 		// 		Block* temp = start->next;
@@ -139,15 +139,15 @@ void *t_malloc(size_t size) {
 		// //no space found and at end
 		// else {
 		// 	//amount to ask mmap for rounded up to the nearest page including meta data
-		// 	uint64_t pages = (int)ciel(((float)size+32)/((float)4096));
+		// 	uint64_t pages = (int)ciel(((float)size+sizeof(Block))/((float)4096));
 		// 	Block* new = (Block*)mmap(NULL, pages*4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
 		// 	new->free = false;
 		// 	new->size = pages*4096;
-		// 	new->usable = new->size-32;
+		// 	new->usable = new->size-sizeof(Block);
 		// 	new->next = NULL;
 		// 	start->next = new;
 		// 	//fill current node and make new node right after with leftover space~
-		// 	if(new->usable-size > 32) {
+		// 	if(new->usable-size > sizeof(Block)) {
 		// 		//leftover space is start->size-size
 		// 		//take leftover space out
 		// 		new->usable -= new->size-size;
@@ -157,7 +157,7 @@ void *t_malloc(size_t size) {
 		// 		Block* extra = new+new->size-size;
 		// 		extra->free = true;
 		// 		extra->size = new->size-size;
-		// 		extra->usable = extra->size-32;
+		// 		extra->usable = extra->size-sizeof(Block);
 		// 		extra->next = NULL;
 		// 		//connect extra into the sequence
 		// 		new->next = extra;
@@ -216,11 +216,20 @@ void *t_malloc(size_t size) {
 
 void t_free(void *ptr) {
 	Block* iter = start;
-  	while(iter!=ptr) {
+  	while((((char*)iter) + sizeof(Block)) != ptr) {
 		iter = iter->next;
 		if(iter == NULL) {
 			fprintf(stderr, "tried free nonexisting pointer");
 		}
 	}
 	iter->free = true;
+}
+
+void printBlocks() {
+	Block* iter = start;
+	while(iter != NULL) {
+		printf("Block at %p, size: %zu, usable: %zu, free: %d\n", (void*)iter, iter->size, iter->usable, iter->free);
+		iter = iter->next;
+	}
+	printf("___________________________________________________________________\n");
 }
