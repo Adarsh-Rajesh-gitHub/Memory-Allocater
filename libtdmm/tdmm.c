@@ -82,7 +82,7 @@ void* loadIn(size_t size, Block* start) {
 				Block* extra = (Block*)(((char*)new) + sizeof(Block) + size);
 				extra->free = true;
 				extra->size = new->size-size-sizeof(Block);
-				extra->usable = new->size-sizeof(Block);
+				extra->usable = extra->size-sizeof(Block);
 				extra->next = NULL;
 				//take leftover space out
 				new->usable = size;
@@ -181,7 +181,7 @@ void *t_malloc(size_t size) {
 			iter = iter->next;
 		}
 		if(ptr == NULL) ptr = iter;
-\
+
 		// //no match found so have to set to end
 		// if(ptr == NULL) {
 		// 	ptr = iter->next;
@@ -194,7 +194,6 @@ void *t_malloc(size_t size) {
 		int64_t curDiff;
 		Block* iter = start;
 		while(iter != NULL) {
-			printf("%d\n", iter->usable);
 			if(iter->free && iter->usable >= size) {
 				curDiff = iter->usable-size;
 				if(curDiff > differential) {
