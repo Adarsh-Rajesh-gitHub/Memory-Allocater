@@ -102,7 +102,7 @@ void *t_malloc(size_t size) {
 	if((cur != FIRST_FIT && cur != BEST_FIT && cur != WORST_FIT) || start == NULL) {
 		fprintf(stderr, "malloc without starting process");
 	}
-
+	if(size%4 != 0) size = (size & ~3) + 4;
 	if(cur == FIRST_FIT) {
 		Block* iter = start;
 		while(iter->usable < size || !iter->free) {
