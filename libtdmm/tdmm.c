@@ -227,7 +227,8 @@ void t_free(void *ptr) {
 	//coalese
 	Block* coalesce = start;
 	while(coalesce->next != NULL) {
-		if(coalesce->free && coalesce->next->free) {
+		//free checks and also if they are adjacent in memory
+		if(coalesce->free && coalesce->next->free && ((char*)coalesce+coalesce->size) == (char*)coalesce->next) {
 			Block* attach = coalesce->next->next;
 			coalesce->size += coalesce->next->size;
 			coalesce->usable = coalesce->size-sizeof(Block);
