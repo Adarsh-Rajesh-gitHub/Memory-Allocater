@@ -180,6 +180,8 @@ void *t_malloc(size_t size) {
 			}
 			iter = iter->next;
 		}
+		if(ptr == NULL) ptr = iter;
+\
 		// //no match found so have to set to end
 		// if(ptr == NULL) {
 		// 	ptr = iter->next;
@@ -191,7 +193,8 @@ void *t_malloc(size_t size) {
 		int64_t differential = -1;
 		int64_t curDiff;
 		Block* iter = start;
-		while(iter->next != NULL) {
+		while(iter != NULL) {
+			printf("%d\n", iter->usable);
 			if(iter->free && iter->usable >= size) {
 				curDiff = iter->usable-size;
 				if(curDiff > differential) {
@@ -199,11 +202,12 @@ void *t_malloc(size_t size) {
 					ptr = iter;
 				}
 			}
-			iter = iter->next;
+			if(iter->next != NULL) iter = iter->next;
+			else break;
 		}
 		//no match found so have to set to end
 		if(ptr == NULL) {
-			ptr = iter->next;
+			ptr = iter;
 		}
 		return loadIn(size, ptr);
 	}
