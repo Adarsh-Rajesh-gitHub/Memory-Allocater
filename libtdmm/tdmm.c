@@ -79,17 +79,15 @@ void* loadIn(size_t size, Block* start) {
 			start->next = new;
 			//fill current node and make new node right after with leftover space~
 			if(new->usable-size > sizeof(Block)) {
-				//leftover space is start->size-size
-				//take leftover space out
-				new->usable -= new->size-size;
-				new->size -= new->size-size;
-				new->free = false;
-				//create new block after w. new ptr which is prev block ptr + leftover
 				Block* extra = (Block*)(((char*)new) + sizeof(Block) + size);
 				extra->free = true;
-				extra->size = new->size-size;
-				extra->usable = extra->size-sizeof(Block);
+				extra->size = new->size-size-sizeof(Block);
+				extra->usable = new->size-sizeof(Block);
 				extra->next = NULL;
+				//take leftover space out
+				new->usable = size;
+				new->size = size+sizeof(Block);
+				new->free = false;
 				//connect extra into the sequence
 				new->next = extra;
 			}
