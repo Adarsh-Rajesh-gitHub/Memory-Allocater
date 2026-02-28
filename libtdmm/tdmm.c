@@ -253,6 +253,7 @@ void t_free(void *ptr) {
 			coalesce->usable = coalesce->size-sizeof(Block);
 			coalesce->next = attach;
 			blocks--;
+			continue;
 		}
 		if(coalesce->next != NULL) coalesce = coalesce->next;
 		else break;
