@@ -1,5 +1,16 @@
 
 
+
+Adarsh Rajesh - ar77947
+
+run by compling project as a library
+
+Can run tests: 
+gcc test.c tdmm.c -o test
+./test
+
+
+
 First Fit - scan for first available and put in
 
 Best Fit - scan for block closest in size needed
