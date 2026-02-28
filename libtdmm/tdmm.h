@@ -32,4 +32,8 @@ void *t_malloc(size_t size);
 void t_free(void *ptr);
 
 void printBlocks();
+double memoryUtilization();
+int retBlocks();
+int retRequested();
+
 #endif // TDMM_H
