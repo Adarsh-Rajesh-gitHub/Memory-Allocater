@@ -234,19 +234,22 @@ void* t_malloc(size_t size) {
 		fprintf(stderr, "buddy not implemented");
 	}
 	else if(cur == MIXED) {
+		void* p;
 		if(cnt % 3 == 0) {
 			cur = FIRST_FIT;
-			t_malloc(size);
+			p = t_malloc(size);
 		}
 		else if(cnt % 3 == 1) {
 			cur = BEST_FIT;
-			t_malloc(size);
+			p = t_malloc(size);
 		}
 		else {
 			cur = WORST_FIT;
-			t_malloc(size);
+			p = t_malloc(size);
 		}
 		cur = MIXED;
+		cnt++;
+		return p;
 	}
 	else {
 		fprintf(stderr, "illegal enum val");
