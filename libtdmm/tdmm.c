@@ -25,6 +25,9 @@ u_int64_t requested = 0;
 u_int64_t allocated = 0;
 uint64_t blocks = 0;
 
+//for mixed
+int cnt = 0;
+
 void t_init(alloc_strat_e strat) {
 	blocks = 1;
 	allocated = 0;
@@ -112,7 +115,7 @@ void* loadIn(size_t size, Block* start) {
 //NOTE: Fix by removing payload field and instead putting the mmaps to intialize the Block* ptrs
 //there is currently an error as the Block* don't have a memery
 //you will simulate the memory as the actual pointers themselves will be at those memory starts
-void *t_malloc(size_t size) {
+void* t_malloc(size_t size) {
 	
 	if((cur != FIRST_FIT && cur != BEST_FIT && cur != WORST_FIT) || start == NULL) {
 		fprintf(stderr, "malloc without starting process");
@@ -226,6 +229,24 @@ void *t_malloc(size_t size) {
 			ptr = iter;
 		}
 		return loadIn(size, ptr);
+	}
+	else if(cur == BUDDY) {
+		fprintf(stderr, "buddy not implemented");
+	}
+	else if(cur == MIXED) {
+		if(cnt % 3 == 0) {
+			cur = FIRST_FIT;
+			t_malloc(size);
+		}
+		else if(cnt % 3 == 1) {
+			cur = BEST_FIT;
+			t_malloc(size);
+		}
+		else {
+			cur = WORST_FIT;
+			t_malloc(size);
+		}
+		cur = MIXED;
 	}
 	else {
 		fprintf(stderr, "illegal enum val");
