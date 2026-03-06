@@ -17,7 +17,7 @@ typedef enum {
  * @param strat The strategy to use for memory allocation.
  */
 void t_init(alloc_strat_e strat);
-
+void buddy_t_init(alloc_strat_e strat);
 /**
  * Allocates a block of memory of the given size.
  *
@@ -25,13 +25,14 @@ void t_init(alloc_strat_e strat);
  * @return A pointer to the allocated memory block fails.
  */
 void *t_malloc(size_t size);
-
+void* buddyt_malloc(size_t size); 
 /**
  * Frees the given memory block.
  *
  * @param ptr The pointer to the memory block to free. This must be a pointer returned by t_malloc.
  */
 void t_free(void *ptr);
+void buddyt_free(void *ptr);
 
 void printBlocks();
 double memoryUtilization();

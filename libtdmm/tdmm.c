@@ -29,6 +29,11 @@ uint64_t blocks = 0;
 int cnt = 0;
 
 void t_init(alloc_strat_e strat) {
+	if(strat == BUDDY) {
+		cur = BUDDY;
+		buddy_t_init(strat);
+		return;
+	}
 	blocks = 1;
 	allocated = 0;
 	cur = strat;
@@ -116,9 +121,11 @@ void* loadIn(size_t size, Block* start) {
 //there is currently an error as the Block* don't have a memery
 //you will simulate the memory as the actual pointers themselves will be at those memory starts
 void* t_malloc(size_t size) {
-	
-	if((cur != FIRST_FIT && cur != BEST_FIT && cur != WORST_FIT) || start == NULL) {
+	if((cur != FIRST_FIT && cur != BEST_FIT && cur != WORST_FIT && cur != MIXED && cur != BUDDY) || start == NULL) {
 		fprintf(stderr, "malloc without starting process");
+	}
+	if(cur == BUDDY) {
+		return buddyt_malloc(size);
 	}
 	if(size%4 != 0) size = (size & ~3) + 4;
 	//for tracking
@@ -130,57 +137,6 @@ void* t_malloc(size_t size) {
 			iter = iter->next;
 		}
 		return loadIn(size, iter);
-		// //found space
-		// if(start->usable >= size && start->free) {
-		// 	//fill current node and make new node right after with leftover space~
-		// 	if(start->usable-size > sizeof(Block)) {
-		// 		//leftover space is start->size-size
-		// 		//take leftover space out
-		// 		start->usable -= start->size-size;
-		// 		start->size -= start->size-size;
-		// 		start->free = false;
-		// 		//create new block after w. new ptr which is prev block ptr + leftover
-		// 		Block* new = start+start->size-size;
-		// 		new->free = true;
-		// 		new->size = start->size-size;
-		// 		new->usable = new->size-sizeof(Block);
-		// 		new->next = NULL;
-		// 		//connect new into the sequence
-		// 		Block* temp = start->next;
-		// 		start->next = new;
-		// 		new->next = temp;
-		// 	}
-		// 	else {
-		// 		start->free = false;
-		// 	}	
-		// }
-		// //no space found and at end
-		// else {
-		// 	//amount to ask mmap for rounded up to the nearest page including meta data
-		// 	uint64_t pages = (int)ciel(((float)size+sizeof(Block))/((float)4096));
-		// 	Block* new = (Block*)mmap(NULL, pages*4096, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
-		// 	new->free = false;
-		// 	new->size = pages*4096;
-		// 	new->usable = new->size-sizeof(Block);
-		// 	new->next = NULL;
-		// 	start->next = new;
-		// 	//fill current node and make new node right after with leftover space~
-		// 	if(new->usable-size > sizeof(Block)) {
-		// 		//leftover space is start->size-size
-		// 		//take leftover space out
-		// 		new->usable -= new->size-size;
-		// 		new->size -= new->size-size;
-		// 		new->free = false;
-		// 		//create new block after w. new ptr which is prev block ptr + leftover
-		// 		Block* extra = new+new->size-size;
-		// 		extra->free = true;
-		// 		extra->size = new->size-size;
-		// 		extra->usable = extra->size-sizeof(Block);
-		// 		extra->next = NULL;
-		// 		//connect extra into the sequence
-		// 		new->next = extra;
-		// 	}
-		// }
 
 	}
 	else if(cur == BEST_FIT) {
@@ -202,10 +158,6 @@ void* t_malloc(size_t size) {
 		}
 		if(ptr == NULL) ptr = iter;
 
-		// //no match found so have to set to end
-		// if(ptr == NULL) {
-		// 	ptr = iter->next;
-		// }
 		return loadIn(size, ptr);
 	}
 	else if(cur == WORST_FIT) {
@@ -231,6 +183,7 @@ void* t_malloc(size_t size) {
 		return loadIn(size, ptr);
 	}
 	else if(cur == BUDDY) {
+		
 		fprintf(stderr, "buddy not implemented");
 	}
 	else if(cur == MIXED) {
@@ -257,6 +210,10 @@ void* t_malloc(size_t size) {
 }
 
 void t_free(void *ptr) {
+	if(cur == BUDDY) {
+		buddyt_free(ptr);
+		return;
+	}
 	Block* iter = start;
   	while((((char*)iter) + sizeof(Block)) != ptr) {
 		iter = iter->next;
