@@ -45,7 +45,7 @@ void* buddyloadin(size_t size, Block* start) {
                 new->prev = start;
                 new->next = start->next;
                 start->next = new;
-
+                if(new->next != NULL) new->next->prev = new;
                 start = start->next;
             }
             //fill new with the stuff
@@ -71,6 +71,7 @@ void* buddyloadin(size_t size, Block* start) {
         new->next = start->next;
         new->prev = start;
         start->next = new;
+        if(new->next != NULL) new->next->prev = new;
         return buddyt_malloc(size);
     }
 }
