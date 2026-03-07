@@ -74,6 +74,6 @@ void blocksOverOps(alloc_strat_e a) {
 }
 
 int main() {
-    blocksOverOps(WORST_FIT);
+    blocksOverOps(MIXED);
     return 0;
 }

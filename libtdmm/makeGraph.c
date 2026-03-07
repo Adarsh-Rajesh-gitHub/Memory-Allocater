@@ -38,6 +38,6 @@ void oneToEightMB(alloc_strat_e a) {
 
 int main() {
 
-    oneToEightMB(BEST_FIT);
+    oneToEightMB(BUDDY);
     return 0;
 }

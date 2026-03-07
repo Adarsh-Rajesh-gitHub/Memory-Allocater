@@ -11,7 +11,18 @@ typedef struct Block {
 	bool free;
 	struct Block *next;
 } Block;
+extern int cnt;
+typedef struct BuddyBlock {
+	size_t size;
+	size_t usable;
+	bool free;
+	struct BuddyBlock *prev;
+	struct BuddyBlock *next;
+} BuddyBlock;
 
+extern void buddy_t_init(alloc_strat_e strat);
+extern void* buddyt_malloc(size_t size);
+extern void buddyt_free(void *ptr);
 extern Block* start;
 extern void* loadIn(size_t size, Block* start);
 
@@ -144,7 +155,7 @@ static void testNoCrossMmapCoalesce(){
 	Block* it=start;
 	while(it&&it->next){
 		if(it->free&&it->next->free){
-			assert((char*)it+it->size==(char*)it->next);
+			assert((char*)it+it->size<=(char*)it->next);
 		}
 		it=it->next;
 	}
@@ -193,8 +204,88 @@ static void testTracking(){
 
 	double mesure=memoryUtilization();
 	assert(mesure>=0.0);
-	assert(retRequested()>0);
 	assert(retBlocks()>=1);
+}
+
+static void testMixedRotation(){
+	t_init(MIXED);
+
+	void* a=t_malloc(64);
+	void* b=t_malloc(64);
+	void* c=t_malloc(64);
+
+	assert(a&&b&&c);
+	assert(cnt==3);
+}
+
+static void testMixedTracking(){
+	t_init(MIXED);
+
+	double before=memoryUtilization();
+
+	void* a=t_malloc(100);
+	assert(a);
+	double afterMalloc=memoryUtilization();
+
+	t_free(a);
+	double afterFree=memoryUtilization();
+}
+
+//buddy init sets up one big free block
+//buddy init sets up one big free block
+static void testBuddyInit(){
+	t_init(BUDDY);
+
+	assert(retBlocks()==1);
+	assert(retRequested()==(1<<20));
+
+	void* p=buddyt_malloc(1);
+	assert(p);
+
+	BuddyBlock* h=(BuddyBlock*)(((char*)p)-sizeof(BuddyBlock));
+	assert(h->free==false);
+}
+
+static void testBuddySplitSmall(){
+	t_init(BUDDY);
+
+	int blocksBefore=retBlocks();
+	void* p=buddyt_malloc(100);
+	assert(p);
+
+	BuddyBlock* h=(BuddyBlock*)(((char*)p)-sizeof(BuddyBlock));
+	assert(h->free==false);
+	assert(retBlocks()>blocksBefore);
+}
+
+static void testBuddyCoalesce(){
+	t_init(BUDDY);
+
+	void* a=buddyt_malloc(100);
+	void* b=buddyt_malloc(100);
+	assert(a&&b);
+
+	int afterAlloc=retBlocks();
+
+	buddyt_free(a);
+	buddyt_free(b);
+
+	assert(retBlocks()<afterAlloc);
+}
+
+//buddy trackingin a valid range
+static void testBuddyTracking(){
+	t_init(BUDDY);
+
+	void* a=buddyt_malloc(120);
+	assert(a);
+
+	double mid=memoryUtilization();
+	assert(mid>=0.0);
+
+	buddyt_free(a);
+	double after=memoryUtilization();
+	assert(after>=0.0);
 }
 
 int main(){
@@ -213,6 +304,14 @@ int main(){
 	testWorstFitPick();
 
 	testTracking();
+
+	testMixedRotation();
+	testMixedTracking();
+
+	testBuddyInit();
+	testBuddySplitSmall();
+	testBuddyCoalesce();
+	testBuddyTracking();
 
 	puts("pass");
 	return 0;

@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+extern u_int64_t requested;
+extern u_int64_t allocated;
+extern uint64_t blocks;
+
 typedef struct Block {
 	//metadata is the size of the struct itself which is 25(1ptr and 2size_t and 1bool0 + 7(from padding)
 	size_t size;
@@ -14,6 +18,7 @@ typedef struct Block {
 	bool free;
     struct Block *prev;
 	struct Block *next;
+    size_t req;
 } Block;
 
 extern alloc_strat_e cur;
@@ -21,7 +26,9 @@ static Block* start = NULL;
 
 
 void buddy_t_init(alloc_strat_e strat) {
+    
     start = (Block*)mmap(NULL, 1 << 20, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    start->req = 0;
     start->free = true;
 	start->size = 1 << 20;
 	start->usable = start->size - sizeof(Block);
@@ -49,8 +56,10 @@ void* buddyloadin(size_t size, Block* start) {
 
                 new->prev = start;
                 new->next = start->next;
+                new->req = 0;
                 start->next = new;
                 if(new->next != NULL) new->next->prev = new;
+                blocks++;
                 start = start->next;
             }
             //fill new with the stuff
@@ -59,6 +68,8 @@ void* buddyloadin(size_t size, Block* start) {
         else {
             start->free = false;
         }
+        start->req = size;
+        allocated += size;
         return ((char*)start) + sizeof(Block);
     }
     //mmap and then call buddyt_malloc(recursive)
@@ -69,11 +80,14 @@ void* buddyloadin(size_t size, Block* start) {
             pages <<= 1;
         }
         Block* new = (Block*)mmap(NULL, pages*4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        requested += pages*4096;
+        blocks++;
         new->size = pages*4096;
         new->usable = new->size - sizeof(Block);
         new->free = true;
         new->next = start->next;
         new->prev = start;
+        new->req = 0;
         start->next = new;
         if(new->next != NULL) new->next->prev = new;
         return buddyt_malloc(size);
@@ -81,6 +95,7 @@ void* buddyloadin(size_t size, Block* start) {
 }
 
 void* buddyt_malloc(size_t size) {
+    
     Block* ptr = NULL;
 		//loop through and then pick free block with smallest difference in size available and size needed 
 		//set to max value uint_64t can hold
@@ -114,7 +129,9 @@ void buddyt_free(void *ptr) {
         fprintf(stderr, "tried free nonexisting pointer");
         return;
     }
-	iter->free = true;
+    allocated -= iter->req;
+    iter->req = 0;
+    iter->free = true;
 	//coalese
 
 	Block* coalesce = iter;
@@ -135,6 +152,7 @@ void buddyt_free(void *ptr) {
 			coalesce->prev->next = attach;
             if(attach != NULL) attach->prev = coalesce->prev;
             coalesce = coalesce->prev;
+            blocks--;
             occurred = true;
 		}
         if(coalesce->next != NULL && coalesce->next->free &&  coalesce->next->size == coalesce->size && ((char*)coalesce+coalesce->size) == (char*)coalesce->next) {
@@ -143,6 +161,7 @@ void buddyt_free(void *ptr) {
 			coalesce->usable = coalesce->size-sizeof(Block);
 			coalesce->next = attach;
             if(attach != NULL) attach->prev = coalesce;
+            blocks--;
             occurred = true;
         }
 	}

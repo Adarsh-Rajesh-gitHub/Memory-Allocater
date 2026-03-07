@@ -62,6 +62,6 @@ void memrandom100(alloc_strat_e a) {
 }
 
 int main() {
-    memrandom100(BEST_FIT);
+    memrandom100(BUDDY);
     return 0;
 }

@@ -18,7 +18,7 @@ typedef struct Block {
 
 
 alloc_strat_e cur;
-static Block* start = NULL;
+ Block* start = NULL;
 
 //for tracking
 u_int64_t requested = 0;
@@ -29,13 +29,19 @@ uint64_t blocks = 0;
 int cnt = 0;
 
 void t_init(alloc_strat_e strat) {
+	allocated = 0;
+	requested = 0;
+	blocks = 0;
+	cnt = 0;
+
 	if(strat == BUDDY) {
 		cur = BUDDY;
+		requested = 1 << 20;
+		blocks = 1;
 		buddy_t_init(strat);
 		return;
 	}
 	blocks = 1;
-	allocated = 0;
 	cur = strat;
 	if(start == NULL) {
 		//+32 for meta data and then +32 done to pointer to return actual start
@@ -45,7 +51,7 @@ void t_init(alloc_strat_e strat) {
 		start->usable = 1000000;
 		start->next = NULL;
 		//for tracking
-		requested+=1000000+sizeof(Block);
+		requested += 1000000+sizeof(Block);
 	}
 	//if init already called then make all blocks free
 	else {
@@ -187,6 +193,7 @@ void* t_malloc(size_t size) {
 		fprintf(stderr, "buddy not implemented");
 	}
 	else if(cur == MIXED) {
+		allocated -=size;
 		void* p;
 		if(cnt % 3 == 0) {
 			cur = FIRST_FIT;
