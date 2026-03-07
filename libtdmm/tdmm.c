@@ -121,7 +121,7 @@ void* loadIn(size_t size, Block* start) {
 //there is currently an error as the Block* don't have a memery
 //you will simulate the memory as the actual pointers themselves will be at those memory starts
 void* t_malloc(size_t size) {
-	if((cur != FIRST_FIT && cur != BEST_FIT && cur != WORST_FIT && cur != MIXED && cur != BUDDY) || start == NULL) {
+	if(cur != BUDDY && ((cur != FIRST_FIT && cur != BEST_FIT && cur != WORST_FIT && cur != MIXED) || start == NULL)) {
 		fprintf(stderr, "malloc without starting process");
 	}
 	if(cur == BUDDY) {

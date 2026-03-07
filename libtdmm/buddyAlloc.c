@@ -100,12 +100,13 @@ void* buddyt_malloc(size_t size) {
 
 void buddyt_free(void *ptr) {
 	Block* iter = start;
-  	while((((char*)iter) + sizeof(Block)) != ptr) {
-		iter = iter->next;
-		if(iter == NULL) {
-			fprintf(stderr, "tried free nonexisting pointer");
-		}
-	}
+    while(iter != NULL && (((char*)iter) + sizeof(Block)) != ptr) {
+        iter = iter->next;
+    }
+    if(iter == NULL) {
+        fprintf(stderr, "tried free nonexisting pointer");
+        return;
+    }
 	iter->free = true;
 	//coalese
 
@@ -125,7 +126,7 @@ void buddyt_free(void *ptr) {
 			coalesce->prev->size *=2;
 			coalesce->prev->usable= coalesce->prev->size-sizeof(Block);
 			coalesce->prev->next = attach;
-            attach->prev = coalesce->prev;
+            if(attach != NULL) attach->prev = coalesce->prev;
             coalesce = coalesce->prev;
             occurred = true;
 		}
@@ -134,7 +135,7 @@ void buddyt_free(void *ptr) {
 			coalesce->size *=2;
 			coalesce->usable = coalesce->size-sizeof(Block);
 			coalesce->next = attach;
-            attach->prev = coalesce;
+            if(attach != NULL) attach->prev = coalesce;
             occurred = true;
         }
 	}
