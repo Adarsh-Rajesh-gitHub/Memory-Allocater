@@ -16,10 +16,8 @@ typedef struct Block {
 	struct Block *next;
 } Block;
 
-
 extern alloc_strat_e cur;
-extern Block* start;
-
+static Block* start = NULL;
 
 
 void buddy_t_init(alloc_strat_e strat) {

@@ -18,7 +18,7 @@ typedef struct Block {
 
 
 alloc_strat_e cur;
-Block* start = NULL;
+static Block* start = NULL;
 
 //for tracking
 u_int64_t requested = 0;
