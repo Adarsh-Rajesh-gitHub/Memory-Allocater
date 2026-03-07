@@ -82,7 +82,9 @@ void* buddyt_malloc(size_t size) {
 		uint64_t differential = (1ULL << 63)-1;
 		uint64_t curDiff;
 		Block* iter = start;
-		while(iter->next != NULL) {
+        Block* tail = NULL;
+		while(iter != NULL) {
+            tail = iter;
 			if(iter->free && iter->usable >= size) {
 				curDiff = iter->usable-size;
 				if(curDiff < differential) {
@@ -92,7 +94,7 @@ void* buddyt_malloc(size_t size) {
 			}
 			iter = iter->next;
 		}
-		if(ptr == NULL) ptr = iter;
+		if(ptr == NULL) ptr = tail;
 
 		return buddyloadin(size, ptr);
         //this should have either the smallest block that can fit the size or the end of the list if no block can fit the size
