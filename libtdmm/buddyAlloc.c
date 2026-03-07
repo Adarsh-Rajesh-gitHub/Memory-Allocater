@@ -31,7 +31,7 @@ void buddy_t_init(alloc_strat_e strat) {
 
 //helper for once node found to load in memory on, it handles loading in memeory and creating next block with leftover or case where more memory needed
 void* buddyloadin(size_t size, Block* start) {
-    if(start->usable > size && start->free) {
+    if(start->usable >= size && start->free) {
         size_t target = 1;
         while(target < size + sizeof(Block)) {
             target <<= 1;
